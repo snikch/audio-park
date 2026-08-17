@@ -105,7 +105,11 @@
   $("powerRoute").className = `route-chip ${station === "power" ? "current" : "locked"}`;
   $("powerRoute").disabled = station !== "power";
   $("routeStatus").textContent = station === "zone" ? "four stations open" : "five stations open";
-  ["dispatchStation", "balancedStation", "gainStation"].forEach((id) => $(id).classList.add("completed-station"));
+  ["dispatchStation", "balancedStation", "gainStation"].forEach((id) => {
+    $(id).setAttribute("class", "station completed-station");
+    $(id).removeAttribute("data-lock");
+    $(id).setAttribute("aria-label", `Open ${$(id).querySelector("text").textContent.replace(/^\d+\.\s*/, "")}`);
+  });
   $("zoneStation").setAttribute("class", station === "zone" ? "station active-balanced-station" : "station released-station");
   $("zoneStation").setAttribute("aria-label", "Open Zone Switchyard");
   $("zoneStation").removeAttribute("data-lock");

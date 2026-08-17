@@ -565,6 +565,16 @@ a {
   font-size: 13px;
   font-weight: 850;
 }
+.future-buildings .locked-station .lock-mark {
+  opacity: 1;
+}
+.future-buildings .compact-lock rect {
+  fill: #43525c;
+  stroke: #f4d77a;
+}
+.future-buildings .compact-lock path {
+  stroke: #f4d77a;
+}
 .future-site,
 .locked-station {
   cursor: help;
