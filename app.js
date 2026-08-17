@@ -13,7 +13,7 @@
     "Signal level",
     "Gain in dB",
     "Headroom",
-    "Bench bay",
+    "Optional bench extension",
   ];
   const defaults = {
     chapter: 0,
@@ -116,6 +116,27 @@
     saveState();
     renderNav();
     renderFooter();
+    updateBalancedAccess();
+  }
+
+  function instructionCurrent() {
+    return state.completed.slice(1, 4).every(Boolean) && state.headroom.revealed;
+  }
+
+  function updateBalancedAccess() {
+    const ready = instructionCurrent();
+    const station = $("balancedStation");
+    const route = $("balancedRoute");
+    station.classList.toggle("released-station", ready);
+    station.classList.toggle("locked-station", !ready);
+    station.setAttribute(
+      "aria-label",
+      ready ? "Open Balanced Tunnel" : "Balanced Tunnel needs the Signal Dispatch instructional sequence",
+    );
+    route.disabled = !ready;
+    route.classList.toggle("released", ready);
+    route.classList.toggle("locked", !ready);
+    $("routeStatus").textContent = ready ? "two stations open" : "one station open";
   }
 
   function format(value, decimals = 3) {
@@ -169,13 +190,14 @@
     const next = $("nextLesson");
     previous.disabled = state.chapter === 0;
     next.disabled =
-      (state.chapter > 0 && !state.completed[state.chapter]) ||
-      (state.chapter === chapterNames.length - 1 && state.completed[4]);
+      state.chapter > 0 &&
+      state.chapter !== chapterNames.length - 1 &&
+      !state.completed[state.chapter];
     if (state.chapter === 0) next.textContent = "Begin lesson →";
     else if (state.chapter === chapterNames.length - 1)
-      next.textContent = state.completed[4]
-        ? "Station recorded ✓"
-        : "Complete lab gate";
+      next.textContent = state.lab.status === "evidence-recorded"
+        ? "Optional lab badge ✓"
+        : "Optional bench extension";
     else next.textContent = "Continue →";
   }
 
@@ -299,8 +321,9 @@
     () => {
       const lab = state.lab;
       return `
-        <div class="lesson-banner">The first bench circuit is a passive divider: two resistors, one safe sine source, and one clearly defined 0 V reference.</div>
-        <h2>Bench bay: measure a 2:1 divider</h2>
+        <div class="lesson-banner">Optional bench extension: a passive divider with two resistors, one safe sine source, and one clearly defined 0 V reference.</div>
+        <h2>Optional bench extension: measure a 2:1 divider</h2>
+        <p>This activity can add a measured-versus-model badge. It does not control lesson or station availability.</p>
         <p>A resistor divider uses two resistors in series. Vout is taken from their junction. With equal resistors and a light measurement load, Vout is approximately half Vin.</p>
         <pre class="diagram" aria-label="Resistor divider wiring diagram">source signal ── R1 10 kΩ ──┬── Vout
                              │
@@ -574,7 +597,6 @@ scope probe tip  ── measure Vin, then Vout</pre>
     const source = $("sourceChoice");
     const invalidateLab = (clearPrediction = false) => {
       lab.status = "not-started";
-      state.completed[4] = false;
       if (clearPrediction) {
         lab.predictedVout = "";
         $("labPredicted").value = "";
@@ -743,7 +765,7 @@ scope probe tip  ── measure Vin, then Vout</pre>
         saveState();
         setFeedback(
           feedback,
-          `Evidence saved for investigation. With the measured resistors and ${format(observedVin)} Vrms observed Vin, expected Vout is ${format(expectedFromObservedVin)} Vrms. The ${format(observedDifference)} Vrms difference exceeds the ${format(allowedDifference)} Vrms correlation limit. Disable the source and inspect the fixture; Balanced Tunnel teaching remains available, but its final gate cannot unlock Gain Lift.`,
+          `Evidence saved for investigation. With the measured resistors and ${format(observedVin)} Vrms observed Vin, expected Vout is ${format(expectedFromObservedVin)} Vrms. The ${format(observedDifference)} Vrms difference exceeds the ${format(allowedDifference)} Vrms correlation limit. Disable the source and inspect the fixture before repeating.`,
           false,
         );
         renderLabCompletion();
@@ -751,11 +773,10 @@ scope probe tip  ── measure Vin, then Vout</pre>
         return;
       }
       lab.status = "evidence-recorded";
-      completeChapter(4);
       saveState();
       setFeedback(
         feedback,
-        `Evidence gate passed. Expected Vout from observed Vin is ${format(expectedFromObservedVin)} Vrms; the ${format(observedDifference)} Vrms difference is within the ${format(allowedDifference)} Vrms correlation limit.`,
+        `Optional lab evidence accepted. Expected Vout from observed Vin is ${format(expectedFromObservedVin)} Vrms; the ${format(observedDifference)} Vrms difference is within the ${format(allowedDifference)} Vrms correlation limit.`,
         true,
       );
       renderLabCompletion();
@@ -773,13 +794,13 @@ scope probe tip  ── measure Vin, then Vout</pre>
     if (!target) return;
     if (state.lab.status === "blocked-source") {
       target.innerHTML =
-        '<div class="blocked-box"><b>Lab safely blocked:</b> the fixture model is available, but no suitable stimulus source is recorded. Balanced Tunnel teaching remains available; Gain Lift cannot unlock without this fixture evidence.</div>';
+        '<div class="blocked-box"><b>Optional lab safely blocked:</b> the fixture model is available, but no suitable stimulus source is recorded. Course lessons remain available.</div>';
     } else if (state.lab.status === "needs-investigation") {
       target.innerHTML =
         '<div class="blocked-box"><b>Investigation gate:</b> the readings and evidence references are saved, but the divider result does not correlate with its calculated ratio. Disable the source and inspect wiring, references, settings, and resistor values before repeating the measurement.</div>';
     } else if (state.lab.status === "evidence-recorded") {
       target.innerHTML =
-        '<div class="completion-card"><h3>Signal Dispatch evidence gate recorded</h3><p>Balanced Tunnel is released. Its physical lab will still require this current fixture evidence before Gain Lift can unlock.</p></div>';
+        '<div class="completion-card"><h3>Optional Signal Dispatch bench badge recorded</h3><p>The evidence is retained for measured-versus-model comparison. Course progression remains instructional.</p></div>';
     } else {
       target.innerHTML =
         '<div class="blocked-box"><b>Gate open for work:</b> complete the source, fixture, prediction, and observation records. It is valid to stop with a documented blocker.</div>';
@@ -839,10 +860,7 @@ scope probe tip  ── measure Vin, then Vout</pre>
     barrier.classList.toggle("visible", clips);
     cart.classList.toggle("clipping", clips);
     const tunnel = $("balancedStation");
-    tunnel?.classList.toggle(
-      "ready-station",
-      state.lab.status === "evidence-recorded",
-    );
+    tunnel?.classList.toggle("ready-station", instructionCurrent());
     updateCamera();
     if (force && !reducedMotion) cart.getBoundingClientRect();
   }
@@ -878,6 +896,11 @@ scope probe tip  ── measure Vin, then Vout</pre>
     goToChapter(Math.min(state.maxChapter, 1)),
   );
   const openBalancedTunnel = () => {
+    if (!instructionCurrent()) {
+      $("worldNarration").textContent =
+        "Balanced Tunnel needs the Signal Dispatch simulation, committed prediction, and retrieval sequence. Optional bench evidence is not required.";
+      return;
+    }
     location.search = "?station=balanced";
   };
   $("balancedStation").addEventListener("click", openBalancedTunnel);
@@ -1015,6 +1038,7 @@ scope probe tip  ── measure Vin, then Vout</pre>
   cartPosition = { ...cartFrom };
   updateResponsiveView();
   renderMotionControl();
+  updateBalancedAccess();
   render();
   animate();
 })();

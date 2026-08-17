@@ -57,7 +57,7 @@
           <title id="parkTitle">Audio Park</title>
           <desc id="parkDescription">
             A connected isometric learning world. Signal Dispatch, Balanced
-            Tunnel, and Gain Lift are open. Later stations are locked.
+            Tunnel, and Gain Lift appear in instructional order. Later stations are locked.
           </desc>
           <defs>
             <pattern
@@ -251,7 +251,7 @@
 
           <g
             id="gainStation"
-            class="station released-station"
+            class="station locked-station"
             transform="translate(758 354)"
             filter="url(#shadow)"
             tabindex="0"
@@ -477,7 +477,7 @@
             <div class="section-rule"></div>
             <div class="route-heading">
               <h2 id="routeTitle">The whole route</h2>
-              <span id="routeStatus">three stations open</span>
+              <span id="routeStatus">one station open</span>
             </div>
             <div class="route-chips">
               <button id="dispatchRoute" class="route-chip current" type="button">
@@ -490,6 +490,7 @@
                 id="gainRoute"
                 class="route-chip locked"
                 type="button"
+                disabled
               >
                 3 Gain Lift
               </button>

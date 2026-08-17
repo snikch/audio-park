@@ -9,13 +9,28 @@
   const STORAGE_KEY = "audioPark.balancedTunnel.v1";
   const SIGNAL_KEY = "audioPark.signalDispatch.v4";
   const MOTION_KEY = "audioPark.reducedMotion";
+  function signalInstructionCurrent() {
+    try {
+      const signal = JSON.parse(localStorage.getItem(SIGNAL_KEY) || "null");
+      return Boolean(
+        signal?.completed?.slice(1, 4).every(Boolean) &&
+          signal.headroom?.revealed,
+      );
+    } catch {
+      return false;
+    }
+  }
+  if (!signalInstructionCurrent()) {
+    location.href = location.pathname;
+    return;
+  }
   const chapterNames = [
     "Tunnel map",
     "Two voltages",
     "What balanced means",
     "Rejection",
     "Coupling & units",
-    "Receiver lab",
+    "Optional bench extension",
   ];
   const defaults = {
     chapter: 0,
@@ -28,8 +43,9 @@
       reasoning: "",
       revealed: false,
     },
-    coupling: { capacitance: 1 },
-    retrieval: { common: "", balance: "", rejection: "", coupling: "" },
+    units: { vrms: 1, prediction: "", reasoning: "", revealed: false },
+    coupling: { capacitance: 1, prediction: "", reasoning: "", revealed: false },
+    retrieval: { common: "", balance: "", rejection: "", units: "", coupling: "" },
     lab: {
       djIdentity: "",
       streamerIdentity: "",
@@ -90,6 +106,7 @@
         ...saved,
         common: { ...defaults.common, ...saved.common },
         rejection: { ...defaults.rejection, ...saved.rejection },
+        units: { ...defaults.units, ...saved.units },
         coupling: { ...defaults.coupling, ...saved.coupling },
         retrieval: { ...defaults.retrieval, ...saved.retrieval },
         lab: {
@@ -121,12 +138,15 @@
 
   function instructionCurrent(candidate) {
     return (
-      candidate.completed.slice(1, 5).every(Boolean) &&
+      candidate.completed.slice(1, 4).every(Boolean) &&
       candidate.retrieval.common === "average" &&
       candidate.retrieval.balance === "impedance" &&
       candidate.retrieval.rejection === "system" &&
-      candidate.retrieval.coupling === "larger" &&
-      candidate.rejection.revealed
+      candidate.retrieval.units === "normalize" &&
+      candidate.retrieval.coupling === "conditional" &&
+      candidate.rejection.revealed &&
+      candidate.units.revealed &&
+      candidate.coupling.revealed
     );
   }
 
@@ -155,7 +175,16 @@
   }
 
   let state = loadState();
-  if (state.lab.status === "complete" && !signalFixtureRecorded()) {
+  if (!instructionCurrent(state)) {
+    state.completed[4] = false;
+    state.maxChapter = Math.min(state.maxChapter, 4);
+    state.chapter = Math.min(state.chapter, 4);
+    if (state.lab.status === "complete") {
+      state.lab.status = "evidence-stale";
+      state.completed[5] = false;
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } else if (state.lab.status === "complete" && !signalFixtureRecorded()) {
     state.lab.status = "blocked-station1";
     state.completed[5] = false;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -237,16 +266,18 @@
     saveState();
     renderNav();
     renderFooter();
+    renderGainStationStatus();
   }
 
   function invalidateInstruction(index) {
     state.completed[index] = false;
     if (state.lab.status === "complete") {
-      state.lab.status = "not-started";
+      state.lab.status = "evidence-stale";
       state.completed[5] = false;
     }
     saveState();
     renderFooter();
+    renderGainStationStatus();
   }
 
   function worldTargetForChapter(index) {
@@ -296,13 +327,14 @@
     const next = $("nextLesson");
     previous.disabled = state.chapter === 0;
     next.disabled =
-      (state.chapter > 0 && !state.completed[state.chapter]) ||
-      (state.chapter === chapterNames.length - 1 && state.completed[5]);
+      state.chapter > 0 &&
+      state.chapter !== chapterNames.length - 1 &&
+      !state.completed[state.chapter];
     if (state.chapter === 0) next.textContent = "Enter tunnel →";
     else if (state.chapter === chapterNames.length - 1) {
-      next.textContent = state.completed[5]
-        ? "Evidence recorded ✓"
-        : "Complete evidence gate";
+      next.textContent = state.lab.status === "complete"
+        ? "Optional lab badge ✓"
+        : "Optional bench extension";
     } else next.textContent = "Continue →";
   }
 
@@ -404,37 +436,45 @@
         <div class="check-card"><h3>Retrieve the cause</h3><p>Why can an XLR-to-NE5532 path reject less interference than the op amp datasheet headline suggests?</p><div class="answer-list"><label><input type="radio" name="rejectionAnswer" value="label" ${state.retrieval.rejection === "label" ? "checked" : ""} /> The XLR shell absorbs a fixed amount</label><label><input type="radio" name="rejectionAnswer" value="system" ${state.retrieval.rejection === "system" ? "checked" : ""} /> Source impedance, cable, receiver network, grounding, frequency, and common-mode range form the real system</label><label><input type="radio" name="rejectionAnswer" value="digital" ${state.retrieval.rejection === "digital" ? "checked" : ""} /> Analog receivers add a network buffer</label></div><button id="checkRejection" class="action-button" type="button">Check answer</button><p id="rejectionFeedback" class="feedback" aria-live="polite"></p></div>
       `;
     },
-    () => {
-      const c = state.coupling.capacitance * 1e-6;
-      const r = 10000;
-      const corner = 1 / (2 * Math.PI * r * c);
-      const ratio20 = 20 / Math.sqrt(20 ** 2 + corner ** 2);
-      const loss20 = 20 * Math.log10(ratio20);
-      return `
-        <div class="lesson-banner">Level references and AC-coupling corners turn interface labels into quantities you can compare.</div>
-        <h2>Coupling and level units</h2>
-        <h3>dBu and dBV are different voltage references</h3>
-        <div class="formula-card"><span class="formula">dBu = 20 log10(Vrms / 0.7746 V)</span><span class="formula">dBV = 20 log10(Vrms / 1 V)</span><span class="formula-note">Both use RMS voltage. Neither says what the real source produces.</span></div>
-        <table class="anchor-table"><thead><tr><th>Level</th><th>Vrms</th><th>Meaning</th></tr></thead><tbody><tr><td>0 dBV</td><td>1.000</td><td>1 Vrms reference</td></tr><tr><td>+2.21 dBu</td><td>1.000</td><td>same voltage, dBu reference</td></tr><tr><td>+4 dBu</td><td>1.228</td><td>reference conversion, not an assumed DJ output</td></tr><tr><td>−10 dBV</td><td>0.316</td><td>reference conversion, not an assumed streamer output</td></tr></tbody></table>
-        <h3>The receiver also has polarity and swing limits</h3>
-        <table class="anchor-table"><thead><tr><th>Condition</th><th>Consequence to verify</th></tr></thead><tbody><tr><td>Swap XLR pins 2 and 3</td><td>Vdiff changes sign, so output polarity reverses</td></tr><tr><td>Input common mode exceeds the receiver range</td><td>Rejection and linear operation are no longer guaranteed</td></tr><tr><td>Output DC offset moves from the intended operating point</td><td>Available swing can become asymmetric and the next stage receives DC</td></tr><tr><td>Requested output approaches a rail/load limit</td><td>The receiver clips; the exact threshold is measured, not inferred from the NE5532 label</td></tr></tbody></table>
-        <h3>A coupling capacitor creates a high-pass corner</h3>
-        <p>A series coupling capacitor can block DC. With the effective resistance it sees, it also attenuates low frequencies.</p>
-        <div class="formula-card"><span class="formula">fc = 1 / (2πReqC)</span><span class="formula-note">At fc, a first-order response is 0.707×, or −3.01 dB. Req is the effective circuit resistance, not automatically one labelled resistor.</span></div>
-        <div class="interactive-card"><h3>Observe one variable: capacitance</h3><p>Req is fixed at 10 kΩ in this teaching model.</p><div class="control-row"><label for="capControl">Coupling capacitance</label><output id="capValue">${format(state.coupling.capacitance, 1)} µF</output><input id="capControl" type="range" min="0.1" max="4.7" step="0.1" value="${state.coupling.capacitance}" /></div><div class="metric-grid"><div class="metric"><small>Corner frequency</small><strong id="cornerValue">${format(corner, 1)} Hz</strong></div><div class="metric"><small>20 Hz magnitude</small><strong id="magnitude20">${format(ratio20, 3)}×</strong></div><div class="metric"><small>20 Hz change</small><strong id="loss20">${format(loss20, 2)} dB</strong></div></div></div>
-        <div class="check-card"><h3>Retrieve both ideas</h3><p>Which statement is correct?</p><div class="answer-list"><label><input type="radio" name="couplingAnswer" value="nominal" ${state.retrieval.coupling === "nominal" ? "checked" : ""} /> +4 dBu proves the DJ always outputs 1.228 Vrms</label><label><input type="radio" name="couplingAnswer" value="larger" ${state.retrieval.coupling === "larger" ? "checked" : ""} /> Increasing C with the same Req lowers fc and reduces low-frequency attenuation</label><label><input type="radio" name="couplingAnswer" value="shield" ${state.retrieval.coupling === "shield" ? "checked" : ""} /> A coupling capacitor determines XLR shield current</label></div><button id="checkCoupling" class="action-button" type="button">Check answer</button><p id="couplingFeedback" class="feedback" aria-live="polite"></p></div>
-      `;
-    },
+    renderUnitsCouplingTemplate,
     renderLabTemplate,
   ];
+
+  function renderUnitsCouplingTemplate() {
+    const unitVrms = state.units.vrms;
+    const dBv = 20 * Math.log10(unitVrms);
+    const dBu = 20 * Math.log10(unitVrms / 0.7746);
+    const { corner, ratio20, loss20 } = couplingNumbers();
+    return `
+      <div class="lesson-banner">Normalize source and module specifications to Vrms before using them in a gain or headroom calculation. Isolate DC only when the actual interface needs it.</div>
+      <h2>Units first: compare the same voltage</h2>
+      <p>A DJ, streamer, preamp, or module document can express the same signal voltage in different dB-referenced units. Convert each stated value to <b>Vrms</b> before comparing sources or calculating gain/headroom. Otherwise the unit reference itself becomes a hidden gain error.</p>
+      <div class="terms-card"><h3>Two references, one voltage</h3><dl><dt>dBV</dt><dd>A voltage level referenced to 1.000 Vrms.</dd><dt>dBu</dt><dd>A voltage level referenced to 0.775 Vrms.</dd><dt>Vrms</dt><dd>The shared voltage unit used for the gain table and bench comparison.</dd></dl></div>
+      <p>The 0.775 Vrms dBu reference came from the older 0 dBm convention: 1 mW in a 600 Ω load. Modern dBu is a voltage level; quoting it does <b>not</b> require a 600 Ω load.</p>
+      <div class="formula-card"><span class="formula">dBV = 20 log10(Vrms / 1.000 V)</span><span class="formula">dBu = 20 log10(Vrms / 0.775 V)</span><span class="formula-note">These are reference conversions, not real-source guarantees.</span></div>
+      <div class="worked-example"><b>Worked normalization examples</b><table class="anchor-table"><thead><tr><th>Same voltage expressed three ways</th><th>Vrms</th><th>dBV</th><th>dBu</th></tr></thead><tbody><tr><td>Reference level</td><td>1.000</td><td>0.00</td><td>+2.21</td></tr><tr><td>Nominal convention example</td><td>1.228</td><td>+1.78</td><td>+4.00</td></tr><tr><td>Nominal convention example</td><td>0.316</td><td>−10.00</td><td>−7.78</td></tr></tbody></table><p>+4 dBu and −10 dBV are conventions/examples, not promises about the DJ or streamer. Treating dBu as dBV makes a 2.21 dB error before any gain/headroom work.</p></div>
+      <div class="interactive-card"><h3>Observe one variable: the same model voltage</h3><p>Move only the model Vrms value. The two dB readings change because their reference voltages differ.</p><div class="control-row"><label for="unitVrms">Model voltage</label><output id="unitVrmsValue">${format(unitVrms, 3)} Vrms</output><input id="unitVrms" type="range" min="0.1" max="1.5" step="0.01" value="${unitVrms}" /></div><div class="metric-grid"><div class="metric"><small>dBV</small><strong id="dBvValue">${format(dBv, 2)} dBV</strong></div><div class="metric"><small>dBu</small><strong id="dBuValue">${format(dBu, 2)} dBu</strong></div><div class="metric"><small>Reference gap</small><strong>2.21 dB</strong></div></div></div>
+      <div class="prediction-lock ${state.units.revealed ? "revealed" : ""}">${state.units.revealed ? `+4 dBu normalizes to 1.228 Vrms, about +1.78 dBV. It is 2.21 dB higher than +4 dBV, not the same voltage.` : "The normalization consequence is sealed until you commit a prediction."}</div><div class="answer-list"><label><input type="radio" name="unitPrediction" value="same" ${state.units.prediction === "same" ? "checked" : ""} /> +4 dBu equals +4 dBV</label><label><input type="radio" name="unitPrediction" value="higher" ${state.units.prediction === "higher" ? "checked" : ""} /> +4 dBu is about +1.78 dBV</label><label><input type="radio" name="unitPrediction" value="lower" ${state.units.prediction === "lower" ? "checked" : ""} /> +4 dBu is about −10 dBV</label></div><label class="standalone-field">Why normalize first?<textarea id="unitReasoning" rows="2" placeholder="Mention the two reference voltages or a gain/headroom comparison.">${safe(state.units.reasoning)}</textarea></label><button id="revealUnits" class="action-button" type="button">Commit unit prediction and reveal</button><p id="unitsPredictionFeedback" class="feedback" aria-live="polite"></p>
+      <h2>Coupling next: decide whether DC must stop</h2>
+      <p>Every stage establishes an operating point. A source output, selector/preamp stage, or receiver input can carry or require a different DC bias. A <b>series coupling capacitor</b> blocks steady DC while allowing the changing audio voltage through, so one stage's offset or bias does not force the next stage away from its own operating point.</p>
+      <p>It is not automatic. If direct coupling is safe and the actual biases are compatible, omitting a capacitor avoids its trade-offs. The decision belongs to the measured topology of each interface, not a generic audio diagram.</p>
+      <div class="comparison-grid"><article><h3>Why use one?</h3><p>Keep DC offset or bias from entering a following stage with a different valid operating point.</p></article><article><h3>What it costs</h3><p>Its capacitance and effective resistance make a high-pass response; too small loses bass and changes phase. Charging can create pops. Leakage, polarity, distortion, size, tolerance, and cost can matter.</p></article></div>
+      <div class="formula-card"><span class="formula">fc = 1 / (2πReqC)</span><span class="formula-note">Req is the effective resistance seen by the capacitor in the complete source/load network, not automatically one labelled resistor.</span></div>
+      <div class="worked-example"><b>Worked coupling decision</b><p>For a 1 µF <em>model</em> capacitor with a 10 kΩ <em>model</em> effective resistance, fc = 1/(2π × 10,000 × 1 µF) = 15.9 Hz. At 20 Hz the model magnitude is about 0.783× (−2.1 dB). That may be a reason to choose a larger capacitor, revise the interface impedance, or retain direct coupling only after the actual bias conditions are proven.</p></div>
+      <div class="interactive-card"><h3>Observe one variable: capacitance</h3><p>Req stays fixed at 10 kΩ in this teaching model.</p><div class="control-row"><label for="capControl">Coupling capacitance</label><output id="capValue">${format(state.coupling.capacitance, 1)} µF</output><input id="capControl" type="range" min="0.1" max="4.7" step="0.1" value="${state.coupling.capacitance}" /></div><div class="metric-grid"><div class="metric"><small>Corner frequency</small><strong id="cornerValue">${format(corner, 1)} Hz</strong></div><div class="metric"><small>20 Hz magnitude</small><strong id="magnitude20">${format(ratio20, 3)}×</strong></div><div class="metric"><small>20 Hz change</small><strong id="loss20">${format(loss20, 2)} dB</strong></div></div></div>
+      <div class="prediction-lock ${state.coupling.revealed ? "revealed" : ""}">${state.coupling.revealed ? `With Req fixed, increasing C lowers fc and reduces low-frequency attenuation. It does not establish that this interface needs a capacitor.` : "The coupling consequence is sealed until you commit a prediction."}</div><div class="answer-list"><label><input type="radio" name="couplingPrediction" value="lower" ${state.coupling.prediction === "lower" ? "checked" : ""} /> Increasing C lowers fc with the same Req</label><label><input type="radio" name="couplingPrediction" value="higher" ${state.coupling.prediction === "higher" ? "checked" : ""} /> Increasing C raises fc with the same Req</label><label><input type="radio" name="couplingPrediction" value="always" ${state.coupling.prediction === "always" ? "checked" : ""} /> Every audio interface needs a coupling capacitor</label></div><label class="standalone-field">Why?<textarea id="couplingReasoning" rows="2" placeholder="Mention DC bias, the high-pass trade-off, or effective resistance.">${safe(state.coupling.reasoning)}</textarea></label><button id="revealCoupling" class="action-button" type="button">Commit coupling prediction and reveal</button><p id="couplingPredictionFeedback" class="feedback" aria-live="polite"></p>
+      <div class="check-card"><h3>Retrieve the two decisions</h3><p>Answer without copying the explanation.</p><div class="answer-list"><p><b>Why convert dBu/dBV to Vrms?</b></p><label><input type="radio" name="unitsAnswer" value="normalize" ${state.retrieval.units === "normalize" ? "checked" : ""} /> To compare differently labelled source/stage values without a reference-unit error before gain/headroom work</label><label><input type="radio" name="unitsAnswer" value="labels" ${state.retrieval.units === "labels" ? "checked" : ""} /> To prove a source's actual nominal output from its connector</label><p><b>When is a coupling capacitor appropriate?</b></p><label><input type="radio" name="couplingAnswer" value="conditional" ${state.retrieval.coupling === "conditional" ? "checked" : ""} /> When the measured interface needs DC/bias isolation; direct coupling is retained only when its biases are compatible and safe</label><label><input type="radio" name="couplingAnswer" value="always" ${state.retrieval.coupling === "always" ? "checked" : ""} /> At every audio interface, regardless of topology</label></div><button id="checkCoupling" class="action-button" type="button">Check retrieval</button><p id="couplingFeedback" class="feedback" aria-live="polite"></p></div>
+    `;
+  }
 
   function renderLabTemplate() {
     const lab = state.lab;
     const signalReady = signalFixtureRecorded();
     return `
-      <div class="lesson-banner">Map first, energise second, stimulate third. Unknown hardware remains unpowered.</div>
-      <h2>Receiver lab: staged characterisation</h2>
-      <div class="prerequisite-card ${signalReady ? "ready" : "blocked"}"><b>Signal Dispatch fixture:</b> ${signalReady ? "recorded on this device" : "not recorded on this device"}. ${signalReady ? "This prerequisite is current." : "You may prepare this station, but Gain Lift cannot unlock until the divider fixture gate is recorded."}</div>
+      <div class="lesson-banner">Optional bench extension: map first, energise second, stimulate third. Unknown hardware remains unpowered.</div>
+      <h2>Optional bench extension: receiver characterisation</h2>
+      <p>This activity may add a measured-versus-model badge. It never controls lesson or station availability.</p>
+      <div class="prerequisite-card ${signalReady ? "ready" : "blocked"}"><b>Signal Dispatch fixture:</b> ${signalReady ? "recorded on this device" : "not recorded on this device"}. ${signalReady ? "Its optional evidence is current for this comparison." : "This optional receiver evidence record retains its source-fixture requirement; course lessons remain available."}</div>
       <div class="safety-box"><b>Hard boundary:</b> no Fosi amplifier, speaker output, 48 V distribution, or speakers. Never defeat protective earth or float a bench scope. Ordinary scope ground clips connect only to one confirmed DUT reference.</div>
 
       <div class="lab-card"><h3>1. Inventory the two sources</h3><p>Use manuals, model labels, or retained measurements. “Line level” and connector type are not level specifications.</p><div class="evidence-grid"><label>DJ equipment identity<input id="djIdentity" type="text" value="${safe(lab.djIdentity)}" placeholder="Exact model, or TBD" /></label><label>Streamer identity<input id="streamerIdentity" type="text" value="${safe(lab.streamerIdentity)}" placeholder="Exact WiiM model, or TBD" /></label><label class="wide">Provenance<input id="sourceProvenance" type="text" value="${safe(lab.sourceProvenance)}" placeholder="Manual URLs/sections, label photos, or notebook references" /></label><label class="wide">Nominal and maximum level evidence<input id="levelEvidence" type="text" value="${safe(lab.levelEvidence)}" placeholder="Vrms/dBu/dBV with source and condition; retain TBDs" /></label><label>Cable length/route<input id="cableLength" type="text" value="${safe(lab.cableLength)}" placeholder="Approximate length and route" /></label><label>Output references<input id="sourceReferences" type="text" value="${safe(lab.sourceReferences)}" placeholder="XLR/RCA pins and evidence" /></label><label class="wide">Unresolved values<textarea id="unknowns" rows="3" placeholder="Record every unresolved fact as TBD.">${safe(lab.unknowns)}</textarea></label></div></div>
@@ -663,47 +703,142 @@ pin 1 / shield ↔ signal ground / chassis candidate</pre><div class="evidence-g
   }
 
   function bindCoupling() {
-    const control = $("capControl");
-    const update = () => {
-      state.coupling.capacitance = Number(control.value);
+    const unitControl = $("unitVrms");
+    const capControl = $("capControl");
+    const invalidateStop = () => {
+      state.completed[4] = false;
+      if (state.lab.status === "complete") {
+        state.lab.status = "not-started";
+        state.completed[5] = false;
+      }
+      saveState();
+      renderFooter();
+      renderGainStationStatus();
+    };
+    const updateUnits = () => {
+      state.units.vrms = Number(unitControl.value);
+      const dBv = 20 * Math.log10(state.units.vrms);
+      const dBu = 20 * Math.log10(state.units.vrms / 0.7746);
+      $("unitVrmsValue").textContent = `${format(state.units.vrms, 3)} Vrms`;
+      $("dBvValue").textContent = `${format(dBv, 2)} dBV`;
+      $("dBuValue").textContent = `${format(dBu, 2)} dBu`;
+      $("cartCargo").textContent = `${format(state.units.vrms, 3)} Vrms model level`;
+      saveState();
+      updateWorld();
+    };
+    const updateCap = () => {
       const { corner, ratio20, loss20 } = couplingNumbers();
       $("capValue").textContent = `${format(state.coupling.capacitance, 1)} µF`;
       $("cornerValue").textContent = `${format(corner, 1)} Hz`;
       $("magnitude20").textContent = `${format(ratio20, 3)}×`;
       $("loss20").textContent = `${format(loss20, 2)} dB`;
-      $("cartCargo").textContent = `${format(corner, 1)} Hz corner (model)`;
       saveState();
       updateWorld();
     };
-    control.addEventListener("input", update);
-    document
-      .querySelectorAll('input[name="couplingAnswer"]')
-      .forEach((input) =>
-        input.addEventListener("change", () => {
-          state.retrieval.coupling = input.value;
-          invalidateInstruction(4);
-        }),
-      );
-    $("checkCoupling").addEventListener("click", () => {
-      const answer = document.querySelector(
-        'input[name="couplingAnswer"]:checked',
-      );
-      if (!answer) {
-        return setFeedback($("couplingFeedback"), "Choose a statement first.", false);
+    unitControl.addEventListener("input", () => {
+      state.units.vrms = Number(unitControl.value);
+      state.units.prediction = "";
+      state.units.reasoning = "";
+      state.units.revealed = false;
+      state.retrieval.units = "";
+      invalidateStop();
+      render();
+    });
+    capControl.addEventListener("input", () => {
+      state.coupling.capacitance = Number(capControl.value);
+      state.coupling.prediction = "";
+      state.coupling.reasoning = "";
+      state.coupling.revealed = false;
+      state.retrieval.coupling = "";
+      invalidateStop();
+      render();
+    });
+    document.querySelectorAll('input[name="unitPrediction"]').forEach((input) =>
+      input.addEventListener("change", () => {
+        state.units.prediction = input.value;
+        state.units.revealed = false;
+        invalidateStop();
+      }),
+    );
+    $("unitReasoning").addEventListener("input", (event) => {
+      state.units.reasoning = event.target.value;
+      state.units.revealed = false;
+      invalidateStop();
+    });
+    $("revealUnits").addEventListener("click", () => {
+      if (!state.units.prediction || state.units.reasoning.trim().length < 12) {
+        return setFeedback($("unitsPredictionFeedback"), "Choose a conversion and record a short reason before revealing.", false);
       }
-      const correct = answer.value === "larger";
+      state.units.revealed = true;
+      saveState();
+      setFeedback(
+        $("unitsPredictionFeedback"),
+        state.units.prediction === "higher"
+          ? "Prediction recorded. Normalize values to Vrms before comparing gain/headroom."
+          : "Prediction recorded. Compare both reference voltages in the revealed result.",
+        state.units.prediction === "higher",
+      );
+      render();
+    });
+    document.querySelectorAll('input[name="couplingPrediction"]').forEach((input) =>
+      input.addEventListener("change", () => {
+        state.coupling.prediction = input.value;
+        state.coupling.revealed = false;
+        invalidateStop();
+      }),
+    );
+    $("couplingReasoning").addEventListener("input", (event) => {
+      state.coupling.reasoning = event.target.value;
+      state.coupling.revealed = false;
+      invalidateStop();
+    });
+    $("revealCoupling").addEventListener("click", () => {
+      if (!state.coupling.prediction || state.coupling.reasoning.trim().length < 12) {
+        return setFeedback($("couplingPredictionFeedback"), "Choose a coupling outcome and record a short reason before revealing.", false);
+      }
+      state.coupling.revealed = true;
+      saveState();
+      setFeedback(
+        $("couplingPredictionFeedback"),
+        state.coupling.prediction === "lower"
+          ? "Prediction recorded. The high-pass model changes; the real topology decides whether coupling is needed."
+          : "Prediction recorded. Use the revealed high-pass relationship and the actual DC-bias decision.",
+        state.coupling.prediction === "lower",
+      );
+      render();
+    });
+    document.querySelectorAll('input[name="unitsAnswer"]').forEach((input) =>
+      input.addEventListener("change", () => {
+        state.retrieval.units = input.value;
+        invalidateStop();
+      }),
+    );
+    document.querySelectorAll('input[name="couplingAnswer"]').forEach((input) =>
+      input.addEventListener("change", () => {
+        state.retrieval.coupling = input.value;
+        invalidateStop();
+      }),
+    );
+    $("checkCoupling").addEventListener("click", () => {
+      if (!state.units.revealed || !state.coupling.revealed) {
+        return setFeedback($("couplingFeedback"), "Commit and reveal both predictions before retrieval.", false);
+      }
+      const correct =
+        state.retrieval.units === "normalize" &&
+        state.retrieval.coupling === "conditional";
       setFeedback(
         $("couplingFeedback"),
         correct
-          ? "Correct. Larger C lowers the first-order corner when the effective resistance is fixed."
-          : "Level references do not prove a source output, and the RC corner is not a shield-current model.",
+          ? "Correct. Normalize first; add coupling only when the measured interface needs DC/bias isolation."
+          : "Recheck the reference-unit mismatch and the actual-bias decision.",
         correct,
       );
       if (correct) completeChapter(4);
     });
-    update();
+    updateUnits();
+    updateCap();
     $("worldNarration").textContent =
-      "An undersized coupling capacitor weakens the cart's 20 Hz motion before it reaches the subtraction gate.";
+      "The cart compares voltage references, then pauses at a DC-bias gate. The high-pass model is not a hardware decision.";
   }
 
   function collectLab() {
@@ -810,13 +945,15 @@ pin 1 / shield ↔ signal ground / chassis candidate</pre><div class="evidence-g
     if (!target) return;
     const messages = {
       "blocked-powered":
-        '<div class="blocked-box"><b>Safe blocked state saved:</b> source and power-off mapping are retained. Powered work and Gain Lift remain blocked until every named prerequisite is supported.</div>',
+        '<div class="blocked-box"><b>Optional lab safely blocked:</b> source and power-off mapping are retained. Powered work remains physically blocked until every named prerequisite is supported; course lessons remain available.</div>',
       "blocked-station1":
-        '<div class="blocked-box"><b>Receiver evidence retained:</b> Signal Dispatch fixture evidence is missing on this device, so Gain Lift practical work remains blocked.</div>',
+        '<div class="blocked-box"><b>Optional receiver evidence retained:</b> Signal Dispatch fixture evidence is missing on this device, so this optional record cannot be accepted.</div>',
       "needs-investigation":
-        '<div class="blocked-box"><b>Evidence retained for investigation:</b> the selected disposition does not support provisional reuse. Gain Lift practical work remains blocked.</div>',
+        '<div class="blocked-box"><b>Evidence retained for investigation:</b> the selected disposition does not support provisional reuse. Course lessons remain available.</div>',
+      "evidence-stale":
+        '<div class="blocked-box"><b>Optional evidence needs refresh:</b> the instructional model changed, so this retained record cannot carry a current badge until the revised instructional sequence is completed.</div>',
       complete:
-        '<div class="completion-card"><h3>Balanced Tunnel evidence gate recorded</h3><p>The source map, receiver fixture, differential/common-mode comparison, and provisional reuse decision are current. Gain Lift practical evidence can be recorded.</p></div>',
+        '<div class="completion-card"><h3>Optional Balanced Tunnel bench badge recorded</h3><p>The source map, receiver fixture, differential/common-mode comparison, and provisional reuse decision are current for this retained comparison.</p></div>',
     };
     target.innerHTML =
       messages[state.lab.status] ||
@@ -826,16 +963,23 @@ pin 1 / shield ↔ signal ground / chassis candidate</pre><div class="evidence-g
   function renderGainStationStatus() {
     const station = $("gainStation");
     const route = $("gainRoute");
-    station.classList.remove("ready-station");
-    station.classList.add("released-station");
-    station.removeAttribute("data-lock");
-    station.setAttribute("aria-label", "Open Gain Lift");
-    route.classList.remove("locked");
-    route.classList.add("released");
-    route.disabled = false;
+    const ready = instructionCurrent(state);
+    station.classList.toggle("ready-station", ready);
+    station.classList.toggle("released-station", ready);
+    station.classList.toggle("locked-station", !ready);
+    station.setAttribute(
+      "aria-label",
+      ready ? "Open Gain Lift" : "Gain Lift needs the Balanced Tunnel instructional sequence",
+    );
+    route.classList.toggle("locked", !ready);
+    route.classList.toggle("released", ready);
+    route.disabled = !ready;
     route.textContent = "3 Gain Lift";
-    route.setAttribute("aria-label", "Open Gain Lift");
-    $("routeStatus").textContent = "three stations open";
+    route.setAttribute(
+      "aria-label",
+      ready ? "Open Gain Lift" : "Gain Lift needs the Balanced Tunnel instructional sequence",
+    );
+    $("routeStatus").textContent = ready ? "three stations open" : "two stations open";
   }
 
   function bindLab() {
@@ -1005,7 +1149,7 @@ pin 1 / shield ↔ signal ground / chassis candidate</pre><div class="evidence-g
         saveState();
         setFeedback(
           feedback,
-          "Evidence saved. Investigate/retest and replace dispositions are valid engineering outcomes, but they do not unlock Gain Lift.",
+          "Evidence saved. Investigate/retest and replace are valid engineering outcomes; course lessons remain available.",
           false,
         );
         renderReceiverCompletion();
@@ -1137,6 +1281,11 @@ pin 1 / shield ↔ signal ground / chassis candidate</pre><div class="evidence-g
     goToChapter(Math.min(state.maxChapter, 1)),
   );
   const openGain = () => {
+    if (!instructionCurrent(state)) {
+      $("worldNarration").textContent =
+        "Gain Lift needs the Balanced Tunnel simulation, committed predictions, and retrieval sequence. Optional bench evidence is not required.";
+      return;
+    }
     location.search = "?station=gain";
   };
   $("gainRoute").addEventListener("click", openGain);
