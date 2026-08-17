@@ -115,28 +115,6 @@
       ),
     };
   };
-  const signalFixtureRecorded = () =>
-    readStorage(SIGNAL_KEY)?.lab?.status === "evidence-recorded";
-  function balancedEvidenceCurrent() {
-    const candidate = readStorage(BALANCED_KEY);
-    return Boolean(
-      candidate &&
-      candidate.lab?.status === "complete" &&
-      candidate.lab.poweredState === "ready" &&
-      candidate.lab.checks?.every(Boolean) &&
-      candidate.lab.disposition === "reuse" &&
-      candidate.lab.acceptReuse &&
-      candidate.rejection?.revealed &&
-      candidate.units?.revealed &&
-      candidate.coupling?.revealed &&
-      candidate.completed?.slice(1, 5).every(Boolean) &&
-      candidate.retrieval?.common === "average" &&
-      candidate.retrieval?.balance === "impedance" &&
-      candidate.retrieval?.rejection === "system" &&
-      candidate.retrieval?.units === "normalize" &&
-      candidate.retrieval?.coupling === "conditional",
-    );
-  }
   function instructionCurrent(candidate = state) {
     return (
       candidate.completed.slice(1, 5).every(Boolean) &&
@@ -179,6 +157,7 @@
   $("gainStation").classList.add("active-balanced-station");
   $("gainStation").removeAttribute("data-lock");
   $("gainStation").setAttribute("aria-label", "Gain Lift");
+  updateZoneAccess();
   $("lessonCount").textContent = `1 / ${chapterNames.length}`;
   document.querySelector(".world-hud span:first-child b").textContent =
     "3 / 11";
@@ -199,6 +178,7 @@
     save();
     renderNav();
     renderFooter();
+    updateZoneAccess();
   }
   function invalidate(index) {
     state.completed[index] = false;
@@ -208,6 +188,23 @@
     }
     save();
     renderFooter();
+    updateZoneAccess();
+  }
+
+  function updateZoneAccess() {
+    const ready = instructionCurrent();
+    $("zoneRoute").disabled = !ready;
+    $("zoneRoute").className = `route-chip ${ready ? "released" : "locked"}`;
+    $("zoneStation").setAttribute(
+      "class",
+      ready ? "station released-station" : "station locked-station",
+    );
+    $("zoneStation").setAttribute(
+      "aria-label",
+      ready ? "Open Zone Switchyard" : "Zone Switchyard needs the Gain Lift instructional sequence",
+    );
+    if (ready) $("zoneStation").removeAttribute("data-lock");
+    $("routeStatus").textContent = ready ? "four stations open" : "three stations open";
   }
   function targetFor(index) {
     return [
@@ -299,9 +296,7 @@
     });
   }
   function prerequisiteCard() {
-    const s1 = signalFixtureRecorded();
-    const s2 = balancedEvidenceCurrent();
-    return `<div class="prerequisite-card ${s1 && s2 ? "ready" : "blocked"}"><b>Optional evidence context:</b> Signal Dispatch fixture: ${s1 ? "recorded" : "not recorded"}. Balanced Tunnel receiver evidence: ${s2 ? "current" : "not recorded or not current"}. These retained records can inform comparison but are not required for this optional bench badge or for course availability.</div>`;
+    return `<div class="prerequisite-card ready"><b>Optional evidence context:</b> bench records are independent comparisons. Their presence or absence never controls this station or Zone Switchyard.</div>`;
   }
 
   const templates = [
@@ -552,7 +547,7 @@
     if (!target) return;
     const messages = {
       complete:
-        '<div class="completion-card"><h3>Optional Gain Lift bench badge recorded</h3><p>A provisional gain/loading comparison is current. Zone Switchyard is unreleased; no hardware path is authorised by this record.</p></div>',
+        '<div class="completion-card"><h3>Optional Gain Lift bench badge recorded</h3><p>A provisional gain/loading comparison is current. It does not control Zone Switchyard or authorise a hardware path.</p></div>',
       "needs-investigation":
         '<div class="blocked-box"><b>Evidence retained for investigation:</b> the loading comparison or decision needs work. Course lessons remain available.</div>',
     };
@@ -757,10 +752,20 @@
   const openBalanced = () => {
     location.search = "?station=balanced";
   };
+  const openZone = () => {
+    if (!instructionCurrent()) {
+      $("worldNarration").textContent =
+        "Zone Switchyard needs the Gain Lift simulation, committed prediction, retrieval, and design sequence. Optional bench evidence is not required.";
+      return;
+    }
+    location.search = "?station=zone";
+  };
   $("dispatchRoute").addEventListener("click", openDispatch);
   $("dispatchStation").addEventListener("click", openDispatch);
   $("balancedRoute").addEventListener("click", openBalanced);
   $("balancedStation").addEventListener("click", openBalanced);
+  $("zoneRoute").addEventListener("click", openZone);
+  $("zoneStation").addEventListener("click", openZone);
   $("gainRoute").addEventListener("click", () =>
     goTo(Math.min(state.maxChapter, 2)),
   );
@@ -771,6 +776,7 @@
     [$("dispatchStation"), openDispatch],
     [$("balancedStation"), openBalanced],
     [$("gainStation"), () => goTo(Math.min(state.maxChapter, 2))],
+    [$("zoneStation"), openZone],
   ].forEach(([element, action]) =>
     element.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -815,7 +821,7 @@
         : "Prediction outcome remains sealed until committed.",
       `Loading model: ${state.model.zones} equal zones create ${format(n.parallelLoad, 0)} Ω and ${format(n.receiverIn)} Vrms loaded input.`,
       "Noise: compare stated gain allocations and conditions; a model is not a noise measurement.",
-      `Lab: ${state.lab.status}. Station 1 fixture ${signalFixtureRecorded() ? "recorded" : "missing"}; Station 2 evidence ${balancedEvidenceCurrent() ? "current" : "not current"}.`,
+      `Optional bench badge: ${state.lab.status}. It does not control lesson or station availability.`,
     ];
     $("worldNarration").textContent = summaries[state.chapter];
   });
@@ -863,6 +869,7 @@
     $("aboutDialog").showModal(),
   );
   document.querySelectorAll("[data-lock]").forEach((station) => {
+    if (station.id === "zoneStation") return;
     const inspect = () => {
       $("worldNarration").textContent = station.dataset.lock;
       station.focus();

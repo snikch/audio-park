@@ -117,6 +117,7 @@
     renderNav();
     renderFooter();
     updateBalancedAccess();
+    updateZoneAccess();
   }
 
   function instructionCurrent() {
@@ -137,6 +138,40 @@
     route.classList.toggle("released", ready);
     route.classList.toggle("locked", !ready);
     $("routeStatus").textContent = ready ? "two stations open" : "one station open";
+  }
+
+  function gainInstructionCurrent() {
+    try {
+      const candidate = JSON.parse(
+        localStorage.getItem("audioPark.gainLift.v1") || "null",
+      );
+      return Boolean(
+        candidate?.completed?.slice(1, 5).every(Boolean) &&
+          candidate.prediction?.revealed &&
+          candidate.retrieval?.gain === "headroom" &&
+          candidate.retrieval?.loading === "parallel" &&
+          candidate.retrieval?.noise === "early",
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  function updateZoneAccess() {
+    const ready = gainInstructionCurrent();
+    const station = $("zoneStation");
+    const route = $("zoneRoute");
+    station.classList.toggle("released-station", ready);
+    station.classList.toggle("locked-station", !ready);
+    station.setAttribute(
+      "aria-label",
+      ready ? "Open Zone Switchyard" : "Zone Switchyard needs the Gain Lift instructional sequence",
+    );
+    if (ready) station.removeAttribute("data-lock");
+    route.disabled = !ready;
+    route.classList.toggle("released", ready);
+    route.classList.toggle("locked", !ready);
+    if (ready) $("routeStatus").textContent = "four stations open";
   }
 
   function format(value, decimals = 3) {
@@ -903,6 +938,14 @@ scope probe tip  ── measure Vin, then Vout</pre>
     }
     location.search = "?station=balanced";
   };
+  const openZoneSwitchyard = () => {
+    if (!gainInstructionCurrent()) {
+      $("worldNarration").textContent =
+        "Zone Switchyard needs the Gain Lift simulation, committed prediction, retrieval, and design sequence. Optional bench evidence is not required.";
+      return;
+    }
+    location.search = "?station=zone";
+  };
   $("balancedStation").addEventListener("click", openBalancedTunnel);
   $("balancedStation").addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -911,6 +954,14 @@ scope probe tip  ── measure Vin, then Vout</pre>
     }
   });
   $("balancedRoute").addEventListener("click", openBalancedTunnel);
+  $("zoneStation").addEventListener("click", openZoneSwitchyard);
+  $("zoneStation").addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openZoneSwitchyard();
+    }
+  });
+  $("zoneRoute").addEventListener("click", openZoneSwitchyard);
   $("dispatchStation").addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -1015,6 +1066,7 @@ scope probe tip  ── measure Vin, then Vout</pre>
   }
 
   document.querySelectorAll("[data-lock]").forEach((station) => {
+    if (station.id === "zoneStation") return;
     station.addEventListener("click", inspectLockedStation);
     station.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -1039,6 +1091,7 @@ scope probe tip  ── measure Vin, then Vout</pre>
   updateResponsiveView();
   renderMotionControl();
   updateBalancedAccess();
+  updateZoneAccess();
   render();
   animate();
 })();

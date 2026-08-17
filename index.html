@@ -57,7 +57,7 @@
           <title id="parkTitle">Audio Park</title>
           <desc id="parkDescription">
             A connected isometric learning world. Signal Dispatch, Balanced
-            Tunnel, and Gain Lift appear in instructional order. Later stations are locked.
+            Tunnel, Gain Lift, Zone Switchyard, and Power Gorge appear in instructional order. Control Tower and later stations are unreleased.
           </desc>
           <defs>
             <pattern
@@ -269,26 +269,28 @@
 
           <g class="future-buildings">
             <g
-              class="future-site"
+              id="zoneStation"
+              class="station locked-station"
               transform="translate(943 223)"
               tabindex="0"
               role="button"
-              aria-label="Zone Switchyard locked"
-              data-lock="Zone Switchyard needs the accepted gain and loading plan from Gain Lift."
+              aria-label="Zone Switchyard needs the Gain Lift instructional sequence"
+              data-lock="Zone Switchyard needs the Gain Lift simulation, prediction, retrieval, and design decision."
             >
-              <polygon points="0,55 70,14 142,55 70,97" />
+              <polygon class="base" points="0,55 70,14 142,55 70,97" />
               <polygon points="18,49 70,19 123,49 70,79" />
               <text x="70" y="119">4. SWITCHYARD</text>
             </g>
             <g
-              class="future-site"
+              id="powerStation"
+              class="station locked-station"
               transform="translate(917 490)"
               tabindex="0"
               role="button"
-              aria-label="Power Gorge locked"
-              data-lock="Power Gorge needs safe, characterised line-level zone outputs."
+              aria-label="Power Gorge needs the Zone Switchyard instructional sequence"
+              data-lock="Power Gorge needs the Zone Switchyard simulation, prediction, retrieval, and design decision."
             >
-              <polygon points="0,55 70,14 142,55 70,97" />
+              <polygon class="base" points="0,55 70,14 142,55 70,97" />
               <circle cx="70" cy="47" r="32" />
               <text x="70" y="119">5. POWER GORGE</text>
             </g>
@@ -494,10 +496,10 @@
               >
                 3 Gain Lift
               </button>
-              <button class="route-chip locked" type="button" disabled>
+              <button id="zoneRoute" class="route-chip locked" type="button" disabled>
                 4 Zone Switchyard
               </button>
-              <button class="route-chip locked" type="button" disabled>
+              <button id="powerRoute" class="route-chip locked" type="button" disabled>
                 5 Power Gorge
               </button>
               <button class="route-chip locked" type="button" disabled>
@@ -546,13 +548,15 @@
       <p>
         Signal Dispatch establishes voltage and fixture discipline. Balanced
         Tunnel distinguishes impedance balance from symmetrical drive. Gain
-        Lift turns current interface evidence into a provisional gain, loading,
-        and noise decision behind explicit evidence gates.
+        Lift turns gain and loading models into a provisional design decision.
+        Zone Switchyard and Power Gorge continue through instructional state and
+        optional, safety-bounded bench extensions.
       </p>
     </dialog>
 
     <script src="app.js"></script>
     <script src="balanced-tunnel.js"></script>
     <script src="gain-lift.js"></script>
+    <script src="later-stations.js"></script>
   </body>
 </html>
