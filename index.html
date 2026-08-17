@@ -5,9 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="A simulation-led introduction to audio voltage, level, gain, headroom, and safe measurement."
+      content="A simulation-led course in audio voltage, gain, balanced interfaces, common-mode rejection, and safe measurement."
     />
-    <title>Audio Park — Signal Dispatch</title>
+    <title>Audio Park</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23173b45'/%3E%3Crect x='15' y='15' width='34' height='34' rx='4' fill='%2365e0bd' stroke='%23f0b440' stroke-width='5'/%3E%3C/svg%3E"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -52,8 +56,8 @@
         >
           <title id="parkTitle">Audio Park</title>
           <desc id="parkDescription">
-            A connected isometric learning world. Signal Dispatch is open.
-            Balanced Tunnel and later stations are locked.
+            A connected isometric learning world. Signal Dispatch and Balanced
+            Tunnel are open. Later stations are locked.
           </desc>
           <defs>
             <pattern
@@ -220,13 +224,12 @@
 
           <g
             id="balancedStation"
-            class="station locked-station"
+            class="station released-station"
             transform="translate(535 263)"
             filter="url(#shadow)"
             tabindex="0"
             role="button"
-            aria-label="Balanced Tunnel locked. Complete Signal Dispatch evidence and learner approval."
-            data-lock="Balanced Tunnel needs the completed Signal Dispatch fixture and learner acceptance."
+            aria-label="Open Balanced Tunnel"
           >
             <polygon class="base" points="0,94 100,36 202,94 100,153" />
             <path class="tunnel" d="M36 105V60C36 1 164 1 164 60v45L100 142Z" />
@@ -234,9 +237,12 @@
               class="tunnel-mouth"
               d="M69 123V69c0-34 62-34 62 0v54L100 141Z"
             />
-            <g class="lock-mark">
-              <rect x="83" y="62" width="34" height="31" rx="4" />
-              <path d="M91 62V50c0-18 18-18 18 0v12" />
+            <g id="balancedRide" class="balanced-ride" aria-hidden="true">
+              <path class="pair-rail rail-plus" d="M55 111L95 87L148 56" />
+              <path class="pair-rail rail-minus" d="M66 126L106 102L159 71" />
+              <circle class="fog fog-a" cx="97" cy="55" r="17" />
+              <circle class="fog fog-b" cx="126" cy="73" r="22" />
+              <path id="tunnelResidue" class="tunnel-residue" d="M102 107q9-12 18 0t18 0" />
             </g>
             <text class="building-label" x="100" y="177">
               2. BALANCED TUNNEL
@@ -419,6 +425,14 @@
             <span aria-hidden="true">↺</span
             ><span class="control-label">Replay</span>
           </button>
+          <button id="inspectButton" type="button">
+            <span aria-hidden="true">⌕</span
+            ><span class="control-label">Inspect</span>
+          </button>
+          <button id="motionButton" type="button" aria-pressed="false">
+            <span aria-hidden="true">◫</span
+            ><span class="control-label">Reduced motion</span>
+          </button>
           <label
             >Speed
             <input
@@ -442,9 +456,9 @@
 
       <aside id="guide" class="guide" aria-label="Signal Dispatch lesson guide">
         <div class="guide-scroll">
-          <div class="stop-kicker">STOP 1 OF 11</div>
-          <h1>Signal Dispatch</h1>
-          <p class="guide-lead">
+          <div id="stopKicker" class="stop-kicker">STOP 1 OF 11</div>
+          <h1 id="stationTitle">Signal Dispatch</h1>
+          <p id="stationLead" class="guide-lead">
             Learn what the signal cart carries before changing it or measuring
             it.
           </p>
@@ -464,16 +478,21 @@
             <div class="section-rule"></div>
             <div class="route-heading">
               <h2 id="routeTitle">The whole route</h2>
-              <span>first station open</span>
+              <span id="routeStatus">two stations open</span>
             </div>
             <div class="route-chips">
-              <button class="route-chip current" type="button">
+              <button id="dispatchRoute" class="route-chip current" type="button">
                 1 Signal Dispatch
               </button>
-              <button class="route-chip locked" type="button" disabled>
+              <button id="balancedRoute" class="route-chip released" type="button">
                 2 Balanced Tunnel
               </button>
-              <button class="route-chip locked" type="button" disabled>
+              <button
+                id="gainRoute"
+                class="route-chip locked"
+                type="button"
+                disabled
+              >
                 3 Gain Lift
               </button>
               <button class="route-chip locked" type="button" disabled>
@@ -526,11 +545,14 @@
         are teaching limits, not measurements of purchased hardware.
       </p>
       <p>
-        Signal Dispatch covers the vocabulary and fixture discipline required
-        before Balanced Tunnel can safely characterise the real DJ receiver.
+        Signal Dispatch establishes voltage and fixture discipline. Balanced
+        Tunnel distinguishes impedance balance from symmetrical drive, models
+        common-mode rejection, and stages real receiver characterisation behind
+        explicit evidence gates.
       </p>
     </dialog>
 
     <script src="app.js"></script>
+    <script src="balanced-tunnel.js"></script>
   </body>
 </html>

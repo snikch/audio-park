@@ -1,8 +1,13 @@
 (() => {
   "use strict";
 
+  if (new URLSearchParams(location.search).get("station") === "balanced") {
+    return;
+  }
+
   const $ = (id) => document.getElementById(id);
   const STORAGE_KEY = "audioPark.signalDispatch.v4";
+  const MOTION_KEY = "audioPark.reducedMotion";
   const chapterNames = [
     "Orientation",
     "Signal level",
@@ -62,11 +67,16 @@
   let animationTime = 0;
   let animationSpeed = 1;
   let worldScale = 1;
-  let reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const savedMotion = localStorage.getItem(MOTION_KEY);
+  let reducedMotion = savedMotion === null
+    ? matchMedia("(prefers-reduced-motion: reduce)").matches
+    : savedMotion === "true";
   let cartTravel = 1;
   let cartFrom = { x: 236, y: 390 };
   let cartTo = { x: 236, y: 390 };
   let cartPosition = { x: 236, y: 390 };
+
+  document.title = "Audio Park — Signal Dispatch";
 
   function worldTargetForChapter(index) {
     const targets = [
@@ -733,7 +743,7 @@ scope probe tip  ── measure Vin, then Vout</pre>
         saveState();
         setFeedback(
           feedback,
-          `Evidence saved for investigation. With the measured resistors and ${format(observedVin)} Vrms observed Vin, expected Vout is ${format(expectedFromObservedVin)} Vrms. The ${format(observedDifference)} Vrms difference exceeds the ${format(allowedDifference)} Vrms correlation limit. Disable the source and inspect the fixture; Balanced Tunnel stays locked.`,
+          `Evidence saved for investigation. With the measured resistors and ${format(observedVin)} Vrms observed Vin, expected Vout is ${format(expectedFromObservedVin)} Vrms. The ${format(observedDifference)} Vrms difference exceeds the ${format(allowedDifference)} Vrms correlation limit. Disable the source and inspect the fixture; Balanced Tunnel teaching remains available, but its final gate cannot unlock Gain Lift.`,
           false,
         );
         renderLabCompletion();
@@ -763,13 +773,13 @@ scope probe tip  ── measure Vin, then Vout</pre>
     if (!target) return;
     if (state.lab.status === "blocked-source") {
       target.innerHTML =
-        '<div class="blocked-box"><b>Lab safely blocked:</b> the fixture model is available, but no suitable stimulus source is recorded. Balanced Tunnel remains locked.</div>';
+        '<div class="blocked-box"><b>Lab safely blocked:</b> the fixture model is available, but no suitable stimulus source is recorded. Balanced Tunnel teaching remains available; Gain Lift cannot unlock without this fixture evidence.</div>';
     } else if (state.lab.status === "needs-investigation") {
       target.innerHTML =
         '<div class="blocked-box"><b>Investigation gate:</b> the readings and evidence references are saved, but the divider result does not correlate with its calculated ratio. Disable the source and inspect wiring, references, settings, and resistor values before repeating the measurement.</div>';
     } else if (state.lab.status === "evidence-recorded") {
       target.innerHTML =
-        '<div class="completion-card"><h3>Signal Dispatch evidence gate recorded</h3><p>The next station is visually ready. It remains outside this vertical-slice build until the learner accepts this station.</p></div>';
+        '<div class="completion-card"><h3>Signal Dispatch evidence gate recorded</h3><p>Balanced Tunnel is released. Its physical lab will still require this current fixture evidence before Gain Lift can unlock.</p></div>';
     } else {
       target.innerHTML =
         '<div class="blocked-box"><b>Gate open for work:</b> complete the source, fixture, prediction, and observation records. It is valid to stop with a documented blocker.</div>';
@@ -828,7 +838,7 @@ scope probe tip  ── measure Vin, then Vout</pre>
     wave.setAttribute("d", d);
     barrier.classList.toggle("visible", clips);
     cart.classList.toggle("clipping", clips);
-    const tunnel = document.querySelector(".locked-station");
+    const tunnel = $("balancedStation");
     tunnel?.classList.toggle(
       "ready-station",
       state.lab.status === "evidence-recorded",
@@ -864,6 +874,20 @@ scope probe tip  ── measure Vin, then Vout</pre>
   $("dispatchStation").addEventListener("click", () =>
     goToChapter(Math.min(state.maxChapter, 1)),
   );
+  $("dispatchRoute").addEventListener("click", () =>
+    goToChapter(Math.min(state.maxChapter, 1)),
+  );
+  const openBalancedTunnel = () => {
+    location.search = "?station=balanced";
+  };
+  $("balancedStation").addEventListener("click", openBalancedTunnel);
+  $("balancedStation").addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openBalancedTunnel();
+    }
+  });
+  $("balancedRoute").addEventListener("click", openBalancedTunnel);
   $("dispatchStation").addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -894,6 +918,33 @@ scope probe tip  ── measure Vin, then Vout</pre>
     $("pauseButton").setAttribute("aria-pressed", "false");
     $("pauseButton").querySelector("span").textContent = "Ⅱ";
     $("pauseButton").querySelector(".control-label").textContent = "Pause";
+    updateWorld(true);
+  });
+  $("inspectButton").addEventListener("click", () => {
+    const summaries = [
+      "Cart: quiet test signal. Reference: not assigned until the fixture is drawn. Hardware: disconnected.",
+      `Cart: ${format(state.waveform.vrms)} Vrms at ${state.waveform.frequency} Hz. This is a calculated sine model.`,
+      `Cart: ${format(state.gain.vin)} Vrms × ${format(ratioFromDb(state.gain.db))} = ${format(state.gain.vin * ratioFromDb(state.gain.db))} Vrms.`,
+      state.headroom.revealed
+        ? `Cart: ${format(state.headroom.vin * ratioFromDb(state.headroom.db))} Vrms against a ${format(state.headroom.limit)} Vrms model limit.`
+        : "Cart outcome is sealed until a headroom prediction is committed.",
+      `Bench gate: ${state.lab.status}. Source and every reference conductor must be identified before measurement.`,
+    ];
+    $("worldNarration").textContent = summaries[state.chapter];
+  });
+  function renderMotionControl() {
+    $("motionButton").setAttribute("aria-pressed", String(reducedMotion));
+    $("motionButton").setAttribute(
+      "aria-label",
+      reducedMotion ? "Disable reduced motion" : "Enable reduced motion",
+    );
+    $("motionButton").classList.toggle("active", reducedMotion);
+  }
+  $("motionButton").addEventListener("click", () => {
+    reducedMotion = !reducedMotion;
+    localStorage.setItem(MOTION_KEY, String(reducedMotion));
+    if (reducedMotion) cartTravel = 1;
+    renderMotionControl();
     updateWorld(true);
   });
   $("speedControl").addEventListener("input", (event) => {
@@ -963,6 +1014,7 @@ scope probe tip  ── measure Vin, then Vout</pre>
   cartTo = { ...cartFrom };
   cartPosition = { ...cartFrom };
   updateResponsiveView();
+  renderMotionControl();
   render();
   animate();
 })();
