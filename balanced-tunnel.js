@@ -192,7 +192,7 @@
   $("dispatchRoute").classList.add("released");
   $("balancedRoute").classList.add("current");
   $("balancedRoute").classList.remove("released");
-  $("routeStatus").textContent = "two stations open";
+  $("routeStatus").textContent = "three stations open";
   if (signalFixtureRecorded()) {
     $("dispatchStation").classList.add("completed-station");
   }
@@ -812,11 +812,11 @@ pin 1 / shield ↔ signal ground / chassis candidate</pre><div class="evidence-g
       "blocked-powered":
         '<div class="blocked-box"><b>Safe blocked state saved:</b> source and power-off mapping are retained. Powered work and Gain Lift remain blocked until every named prerequisite is supported.</div>',
       "blocked-station1":
-        '<div class="blocked-box"><b>Receiver evidence retained:</b> Signal Dispatch fixture evidence is missing on this device, so Gain Lift remains locked.</div>',
+        '<div class="blocked-box"><b>Receiver evidence retained:</b> Signal Dispatch fixture evidence is missing on this device, so Gain Lift practical work remains blocked.</div>',
       "needs-investigation":
-        '<div class="blocked-box"><b>Evidence retained for investigation:</b> the selected disposition does not support provisional reuse. Gain Lift remains locked.</div>',
+        '<div class="blocked-box"><b>Evidence retained for investigation:</b> the selected disposition does not support provisional reuse. Gain Lift practical work remains blocked.</div>',
       complete:
-        '<div class="completion-card"><h3>Balanced Tunnel evidence gate recorded</h3><p>The source map, receiver fixture, differential/common-mode comparison, and provisional reuse decision are current. Gain Lift can be released as the next station build.</p></div>',
+        '<div class="completion-card"><h3>Balanced Tunnel evidence gate recorded</h3><p>The source map, receiver fixture, differential/common-mode comparison, and provisional reuse decision are current. Gain Lift practical evidence can be recorded.</p></div>',
     };
     target.innerHTML =
       messages[state.lab.status] ||
