@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  if (new URLSearchParams(location.search).get("station") === "balanced") {
+  if (new URLSearchParams(location.search).get("station")) {
     return;
   }
 

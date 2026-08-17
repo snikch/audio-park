@@ -56,8 +56,8 @@
         >
           <title id="parkTitle">Audio Park</title>
           <desc id="parkDescription">
-            A connected isometric learning world. Signal Dispatch and Balanced
-            Tunnel are open. Later stations are locked.
+            A connected isometric learning world. Signal Dispatch, Balanced
+            Tunnel, and Gain Lift are open. Later stations are locked.
           </desc>
           <defs>
             <pattern
@@ -251,13 +251,12 @@
 
           <g
             id="gainStation"
-            class="station locked-station"
+            class="station released-station"
             transform="translate(758 354)"
             filter="url(#shadow)"
             tabindex="0"
             role="button"
-            aria-label="Gain Lift locked. Complete Balanced Tunnel first."
-            data-lock="Gain Lift needs a measured source and receiver interface map from Balanced Tunnel."
+            aria-label="Open Gain Lift"
           >
             <polygon class="base" points="0,72 102,12 204,72 102,132" />
             <path class="lift" d="M49 84V5h106v79M58 16h88M68 31h68M78 46h48" />
@@ -491,7 +490,6 @@
                 id="gainRoute"
                 class="route-chip locked"
                 type="button"
-                disabled
               >
                 3 Gain Lift
               </button>
@@ -546,13 +544,14 @@
       </p>
       <p>
         Signal Dispatch establishes voltage and fixture discipline. Balanced
-        Tunnel distinguishes impedance balance from symmetrical drive, models
-        common-mode rejection, and stages real receiver characterisation behind
-        explicit evidence gates.
+        Tunnel distinguishes impedance balance from symmetrical drive. Gain
+        Lift turns current interface evidence into a provisional gain, loading,
+        and noise decision behind explicit evidence gates.
       </p>
     </dialog>
 
     <script src="app.js"></script>
     <script src="balanced-tunnel.js"></script>
+    <script src="gain-lift.js"></script>
   </body>
 </html>

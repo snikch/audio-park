@@ -824,35 +824,18 @@ pin 1 / shield ↔ signal ground / chassis candidate</pre><div class="evidence-g
   }
 
   function renderGainStationStatus() {
-    const ready =
-      state.lab.status === "complete" &&
-      signalFixtureRecorded() &&
-      instructionCurrent(state) &&
-      poweredEvidenceCurrent(state.lab);
     const station = $("gainStation");
     const route = $("gainRoute");
-    station.classList.toggle("ready-station", ready);
-    station.dataset.lock = ready
-      ? "Balanced Tunnel evidence is complete. Gain Lift is not released yet."
-      : "Gain Lift needs current source and receiver evidence from Balanced Tunnel.";
-    station.setAttribute(
-      "aria-label",
-      ready
-        ? "Gain Lift not released. Balanced Tunnel prerequisite complete."
-        : "Gain Lift locked. Complete Balanced Tunnel first.",
-    );
-    route.textContent = ready
-      ? "3 Gain Lift · not released"
-      : "3 Gain Lift";
-    route.setAttribute(
-      "aria-label",
-      ready
-        ? "Gain Lift not released. Balanced Tunnel prerequisite complete."
-        : "Gain Lift locked. Complete Balanced Tunnel first.",
-    );
-    $("routeStatus").textContent = ready
-      ? "two stations open · next lesson not released"
-      : "two stations open";
+    station.classList.remove("ready-station");
+    station.classList.add("released-station");
+    station.removeAttribute("data-lock");
+    station.setAttribute("aria-label", "Open Gain Lift");
+    route.classList.remove("locked");
+    route.classList.add("released");
+    route.disabled = false;
+    route.textContent = "3 Gain Lift";
+    route.setAttribute("aria-label", "Open Gain Lift");
+    $("routeStatus").textContent = "three stations open";
   }
 
   function bindLab() {
@@ -1153,6 +1136,17 @@ pin 1 / shield ↔ signal ground / chassis candidate</pre><div class="evidence-g
   $("balancedStation").addEventListener("click", () =>
     goToChapter(Math.min(state.maxChapter, 1)),
   );
+  const openGain = () => {
+    location.search = "?station=gain";
+  };
+  $("gainRoute").addEventListener("click", openGain);
+  $("gainStation").addEventListener("click", openGain);
+  $("gainStation").addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openGain();
+    }
+  });
   $("pauseButton").addEventListener("click", () => {
     paused = !paused;
     $("pauseButton").setAttribute("aria-pressed", String(paused));

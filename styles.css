@@ -491,6 +491,16 @@ a {
   stroke: #244e46;
   stroke-width: 5;
 }
+.released-station .lift,
+.active-balanced-station .lift {
+  fill: none;
+  stroke: #397761;
+  stroke-width: 9;
+}
+.released-station .lock-mark,
+.active-balanced-station .lock-mark {
+  display: none;
+}
 .released-station:focus,
 .active-balanced-station:focus,
 .completed-station:focus {
