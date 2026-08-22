@@ -187,6 +187,21 @@
     );
   }
 
+  function powerInstructionCurrent() {
+    const candidate = readProgress("audioPark.powerGorge.v1");
+    return Boolean(candidate?.completed?.slice(1, 5).every(Boolean) && candidate.prediction?.revealed && candidate.retrieval?.first === "input" && candidate.retrieval?.second === "conditional" && candidate.design?.choice === "measure");
+  }
+
+  function controlInstructionCurrent() {
+    const candidate = readProgress("audioPark.controlTower.v1");
+    return Boolean(candidate?.completed?.slice(1, 5).every(Boolean) && candidate.prediction?.revealed && candidate.retrieval?.first === "local" && candidate.retrieval?.second === "recover" && candidate.design?.choice === "authoritative");
+  }
+
+  function prototypeInstructionCurrent() {
+    const candidate = readProgress("audioPark.prototypeWorkshop.v1");
+    return Boolean(candidate?.completed?.slice(1, 5).every(Boolean) && candidate.prediction?.revealed && candidate.retrieval?.first === "requirement" && candidate.retrieval?.second === "connectorise" && candidate.design?.choice === "boundary");
+  }
+
   function setStationAccess(id, routeId, ready, openLabel, lockedLabel) {
     const station = $(id);
     const route = $(routeId);
@@ -230,12 +245,19 @@
     );
   }
 
+  function updateControlAccess() { setStationAccess("controlStation", "controlRoute", powerInstructionCurrent(), "Open Control Tower", "Control Tower needs the Power Gorge instructional sequence"); }
+  function updatePrototypeAccess() { setStationAccess("prototypeStation", "prototypeRoute", controlInstructionCurrent(), "Open Prototype Workshop", "Prototype Workshop needs the Control Tower instructional sequence"); }
+  function updateValidationAccess() { setStationAccess("validationStation", "validationRoute", prototypeInstructionCurrent(), "Open Validation Observatory", "Validation Observatory needs the Prototype Workshop instructional sequence"); }
+
   function updateStationAccess() {
     updateBalancedAccess();
     updateGainAccess();
     updateZoneAccess();
     updatePowerAccess();
-    const open = 1 + Number(instructionCurrent()) + Number(balancedInstructionCurrent()) + Number(gainInstructionCurrent()) + Number(zoneInstructionCurrent());
+    updateControlAccess();
+    updatePrototypeAccess();
+    updateValidationAccess();
+    const open = 1 + Number(instructionCurrent()) + Number(balancedInstructionCurrent()) + Number(gainInstructionCurrent()) + Number(zoneInstructionCurrent()) + Number(powerInstructionCurrent()) + Number(controlInstructionCurrent()) + Number(prototypeInstructionCurrent());
     $("routeStatus").textContent = `${open} station${open === 1 ? "" : "s"} open`;
   }
 
@@ -1027,6 +1049,9 @@ scope probe tip  ── measure Vin, then Vout</pre>
     }
     location.search = "?station=power";
   };
+  const openControlTower = () => { if (powerInstructionCurrent()) location.search = "?station=control"; else $("worldNarration").textContent = "Control Tower needs the Power Gorge instructional sequence. Optional bench evidence is not required."; };
+  const openPrototypeWorkshop = () => { if (controlInstructionCurrent()) location.search = "?station=prototype"; else $("worldNarration").textContent = "Prototype Workshop needs the Control Tower instructional sequence. Optional bench evidence is not required."; };
+  const openValidationObservatory = () => { if (prototypeInstructionCurrent()) location.search = "?station=validation"; else $("worldNarration").textContent = "Validation Observatory needs the Prototype Workshop instructional sequence. Optional bench evidence is not required."; };
   $("balancedStation").addEventListener("click", openBalancedTunnel);
   $("balancedStation").addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -1059,6 +1084,7 @@ scope probe tip  ── measure Vin, then Vout</pre>
     }
   });
   $("powerRoute").addEventListener("click", openPowerGorge);
+  [["controlStation", "controlRoute", openControlTower], ["prototypeStation", "prototypeRoute", openPrototypeWorkshop], ["validationStation", "validationRoute", openValidationObservatory]].forEach(([station, route, open]) => { $(station).addEventListener("click", open); $(station).addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } }); $(route).addEventListener("click", open); });
   $("dispatchStation").addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -1163,7 +1189,7 @@ scope probe tip  ── measure Vin, then Vout</pre>
   }
 
   document.querySelectorAll("[data-lock]").forEach((station) => {
-    if (["gainStation", "zoneStation", "powerStation"].includes(station.id)) return;
+    if (["gainStation", "zoneStation", "powerStation", "controlStation", "prototypeStation", "validationStation"].includes(station.id)) return;
     station.addEventListener("click", inspectLockedStation);
     station.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
