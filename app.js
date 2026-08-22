@@ -124,7 +124,7 @@
   }
 
   function updateBalancedAccess() {
-    const ready = instructionCurrent();
+    const ready = true;
     const station = $("balancedStation");
     const route = $("balancedRoute");
     station.classList.toggle("released-station", ready);
@@ -218,14 +218,14 @@
     setStationAccess(
       "gainStation",
       "gainRoute",
-      balancedInstructionCurrent(),
+      true,
       "Open Gain Lift",
       "Gain Lift needs the Balanced Tunnel instructional sequence",
     );
   }
 
   function updateZoneAccess() {
-    const ready = gainInstructionCurrent();
+    const ready = true;
     setStationAccess(
       "zoneStation",
       "zoneRoute",
@@ -239,7 +239,7 @@
     setStationAccess(
       "powerStation",
       "powerRoute",
-      zoneInstructionCurrent(),
+      true,
       "Open Power Gorge",
       "Power Gorge needs the Zone Switchyard instructional sequence",
     );
@@ -248,6 +248,9 @@
   function updateControlAccess() { setStationAccess("controlStation", "controlRoute", true, "Open Control Tower", ""); }
   function updatePrototypeAccess() { setStationAccess("prototypeStation", "prototypeRoute", true, "Open Prototype Workshop", ""); }
   function updateValidationAccess() { setStationAccess("validationStation", "validationRoute", true, "Open Validation Observatory", ""); }
+  function updateInterferenceAccess() { setStationAccess("emiStation", "interferenceRoute", true, "Open Interference Canyon", ""); }
+  function updatePcbAccess() { setStationAccess("pcbStation", "pcbRoute", true, "Open PCB Foundry", ""); }
+  function updateCommissioningAccess() { setStationAccess("gardenStation", "commissioningRoute", true, "Open Commissioning Garden", ""); }
 
   function updateStationAccess() {
     updateBalancedAccess();
@@ -257,7 +260,10 @@
     updateControlAccess();
     updatePrototypeAccess();
     updateValidationAccess();
-    const open = Math.max(4, 1 + Number(instructionCurrent()) + Number(balancedInstructionCurrent()) + Number(gainInstructionCurrent()) + Number(zoneInstructionCurrent()) + Number(powerInstructionCurrent()) + Number(controlInstructionCurrent()) + Number(prototypeInstructionCurrent()));
+    updateInterferenceAccess();
+    updatePcbAccess();
+    updateCommissioningAccess();
+    const open = 11;
     $("routeStatus").textContent = `${open} station${open === 1 ? "" : "s"} open`;
   }
 
@@ -1052,6 +1058,9 @@ scope probe tip  ── measure Vin, then Vout</pre>
   const openControlTower = () => { location.search = "?station=control"; };
   const openPrototypeWorkshop = () => { location.search = "?station=prototype"; };
   const openValidationObservatory = () => { location.search = "?station=validation"; };
+  const openInterferenceCanyon = () => { location.search = "?station=interference"; };
+  const openPcbFoundry = () => { location.search = "?station=pcb"; };
+  const openCommissioningGarden = () => { location.search = "?station=commissioning"; };
   $("balancedStation").addEventListener("click", openBalancedTunnel);
   $("balancedStation").addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -1084,7 +1093,7 @@ scope probe tip  ── measure Vin, then Vout</pre>
     }
   });
   $("powerRoute").addEventListener("click", openPowerGorge);
-  [["controlStation", "controlRoute", openControlTower], ["prototypeStation", "prototypeRoute", openPrototypeWorkshop], ["validationStation", "validationRoute", openValidationObservatory]].forEach(([station, route, open]) => { $(station).addEventListener("click", open); $(station).addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } }); $(route).addEventListener("click", open); });
+  [["controlStation", "controlRoute", openControlTower], ["prototypeStation", "prototypeRoute", openPrototypeWorkshop], ["validationStation", "validationRoute", openValidationObservatory], ["emiStation", "interferenceRoute", openInterferenceCanyon], ["pcbStation", "pcbRoute", openPcbFoundry], ["gardenStation", "commissioningRoute", openCommissioningGarden]].forEach(([station, route, open]) => { $(station).addEventListener("click", open); $(station).addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } }); $(route).addEventListener("click", open); });
   $("dispatchStation").addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();

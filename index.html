@@ -56,8 +56,7 @@
         >
           <title id="parkTitle">Audio Park</title>
           <desc id="parkDescription">
-            A connected isometric learning world. Signal Dispatch through
-            Validation Observatory appear in instructional order. Interference Canyon, PCB Foundry, and Commissioning Garden are unreleased.
+            A connected isometric learning world. Eleven learner-directed stops appear in instructional order, from Signal Dispatch through Commissioning Garden.
           </desc>
           <defs>
             <pattern
@@ -350,8 +349,8 @@
               transform="translate(800 51)"
               tabindex="0"
               role="button"
-              aria-label="Interference Canyon unreleased"
-              data-lock="Interference Canyon is unreleased; its future lesson begins after the validation matrix decision."
+              aria-label="Interference Canyon needs the Validation Observatory instructional sequence"
+              data-lock="Interference Canyon needs the Validation Observatory simulation, prediction, retrieval, and matrix decision."
             >
               <polygon points="0,46 54,15 108,46 54,78" />
               <path d="M30 55l18-32 12 28 18-24" />
@@ -364,8 +363,8 @@
               transform="translate(571 47)"
               tabindex="0"
               role="button"
-              aria-label="PCB Foundry unreleased"
-              data-lock="PCB Foundry is unreleased; its future lesson follows Interference Canyon."
+              aria-label="PCB Foundry needs the Interference Canyon instructional sequence"
+              data-lock="PCB Foundry needs the Interference Canyon simulation, prediction, retrieval, and layout decision."
             >
               <polygon points="0,46 54,15 108,46 54,78" />
               <rect x="27" y="20" width="54" height="39" />
@@ -378,8 +377,8 @@
               transform="translate(350 67)"
               tabindex="0"
               role="button"
-              aria-label="Commissioning Garden unreleased"
-              data-lock="Commissioning Garden is unreleased; fabrication work is a separate approved activity and never an instructional gate."
+              aria-label="Commissioning Garden needs the PCB Foundry instructional sequence"
+              data-lock="Commissioning Garden needs the PCB Foundry simulation, prediction, retrieval, and review decision."
             >
               <polygon points="0,46 54,15 108,46 54,78" />
               <circle cx="43" cy="36" r="17" />
@@ -531,13 +530,13 @@
               <button id="validationRoute" class="route-chip locked" type="button" disabled>
                 8 Validation Observatory
               </button>
-              <button class="route-chip locked" type="button" disabled>
+              <button id="interferenceRoute" class="route-chip locked" type="button" disabled>
                 9 Interference Canyon
               </button>
-              <button class="route-chip locked" type="button" disabled>
+              <button id="pcbRoute" class="route-chip locked" type="button" disabled>
                 10 PCB Foundry
               </button>
-              <button class="route-chip locked" type="button" disabled>
+              <button id="commissioningRoute" class="route-chip locked" type="button" disabled>
                 11 Commissioning Garden
               </button>
             </div>
