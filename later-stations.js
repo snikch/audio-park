@@ -108,7 +108,8 @@
   $("zoneRoute").disabled = false;
   $("powerRoute").className = `route-chip ${station === "power" ? "current" : "locked"}`;
   $("powerRoute").disabled = station !== "power";
-  $("routeStatus").textContent = station === "zone" ? "four stations open" : "five stations open";
+  [["controlRoute", "controlStation"], ["prototypeRoute", "prototypeStation"], ["validationRoute", "validationStation"], ["interferenceRoute", "emiStation"], ["pcbRoute", "pcbStation"], ["commissioningRoute", "gardenStation"]].forEach(([route, building]) => { $(route).className = "route-chip released"; $(route).disabled = false; $(building).setAttribute("class", "station released-station"); $(building).removeAttribute("data-lock"); });
+  $("routeStatus").textContent = "11 stations open";
   ["dispatchStation", "balancedStation", "gainStation"].forEach((id) => {
     $(id).setAttribute("class", "station completed-station");
     $(id).removeAttribute("data-lock");
@@ -269,7 +270,7 @@
   function open(url) { location.search = url; }
   $("previousLesson").addEventListener("click", () => goTo(state.chapter - 1));
   $("nextLesson").addEventListener("click", () => { if (state.chapter === 0) { complete(0); goTo(1); } else if (state.completed[state.chapter] && state.chapter < 5) goTo(state.chapter + 1); });
-  const routes = [["dispatchRoute", "dispatchStation", ""], ["balancedRoute", "balancedStation", "?station=balanced"], ["gainRoute", "gainStation", "?station=gain"], ["zoneRoute", "zoneStation", "?station=zone"], ["powerRoute", "powerStation", "?station=power"]];
+  const routes = [["dispatchRoute", "dispatchStation", ""], ["balancedRoute", "balancedStation", "?station=balanced"], ["gainRoute", "gainStation", "?station=gain"], ["zoneRoute", "zoneStation", "?station=zone"], ["powerRoute", "powerStation", "?station=power"], ["controlRoute", "controlStation", "?station=control"], ["prototypeRoute", "prototypeStation", "?station=prototype"], ["validationRoute", "validationStation", "?station=validation"], ["interferenceRoute", "emiStation", "?station=interference"], ["pcbRoute", "pcbStation", "?station=pcb"], ["commissioningRoute", "gardenStation", "?station=commissioning"]];
   routes.forEach(([route, building, url]) => { const action = () => { if (url === "?station=power" && station === "zone" && !instructionCurrent()) { $("worldNarration").textContent = "Power Gorge needs the Zone Switchyard simulation, committed prediction, retrieval, and design decision. Optional bench evidence is not required."; return; } if (url) open(url); else location.href = location.pathname; }; $(route)?.addEventListener("click", action); $(building)?.addEventListener("click", action); $(building)?.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); action(); } }); });
   $("pauseButton").addEventListener("click", () => { paused = !paused; $("pauseButton").setAttribute("aria-pressed", String(paused)); $("pauseButton").querySelector("span").textContent = paused ? "▶" : "Ⅱ"; $("pauseButton").querySelector(".control-label").textContent = paused ? "Play" : "Pause"; });
   $("stepButton").addEventListener("click", () => { paused = true; time += 0.45; cartTravel = Math.min(1, cartTravel + 0.18); updateWorld(); });
