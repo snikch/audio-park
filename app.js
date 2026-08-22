@@ -245,9 +245,9 @@
     );
   }
 
-  function updateControlAccess() { setStationAccess("controlStation", "controlRoute", powerInstructionCurrent(), "Open Control Tower", "Control Tower needs the Power Gorge instructional sequence"); }
-  function updatePrototypeAccess() { setStationAccess("prototypeStation", "prototypeRoute", controlInstructionCurrent(), "Open Prototype Workshop", "Prototype Workshop needs the Control Tower instructional sequence"); }
-  function updateValidationAccess() { setStationAccess("validationStation", "validationRoute", prototypeInstructionCurrent(), "Open Validation Observatory", "Validation Observatory needs the Prototype Workshop instructional sequence"); }
+  function updateControlAccess() { setStationAccess("controlStation", "controlRoute", true, "Open Control Tower", ""); }
+  function updatePrototypeAccess() { setStationAccess("prototypeStation", "prototypeRoute", true, "Open Prototype Workshop", ""); }
+  function updateValidationAccess() { setStationAccess("validationStation", "validationRoute", true, "Open Validation Observatory", ""); }
 
   function updateStationAccess() {
     updateBalancedAccess();
@@ -257,7 +257,7 @@
     updateControlAccess();
     updatePrototypeAccess();
     updateValidationAccess();
-    const open = 1 + Number(instructionCurrent()) + Number(balancedInstructionCurrent()) + Number(gainInstructionCurrent()) + Number(zoneInstructionCurrent()) + Number(powerInstructionCurrent()) + Number(controlInstructionCurrent()) + Number(prototypeInstructionCurrent());
+    const open = Math.max(4, 1 + Number(instructionCurrent()) + Number(balancedInstructionCurrent()) + Number(gainInstructionCurrent()) + Number(zoneInstructionCurrent()) + Number(powerInstructionCurrent()) + Number(controlInstructionCurrent()) + Number(prototypeInstructionCurrent()));
     $("routeStatus").textContent = `${open} station${open === 1 ? "" : "s"} open`;
   }
 
@@ -1049,9 +1049,9 @@ scope probe tip  ── measure Vin, then Vout</pre>
     }
     location.search = "?station=power";
   };
-  const openControlTower = () => { if (powerInstructionCurrent()) location.search = "?station=control"; else $("worldNarration").textContent = "Control Tower needs the Power Gorge instructional sequence. Optional bench evidence is not required."; };
-  const openPrototypeWorkshop = () => { if (controlInstructionCurrent()) location.search = "?station=prototype"; else $("worldNarration").textContent = "Prototype Workshop needs the Control Tower instructional sequence. Optional bench evidence is not required."; };
-  const openValidationObservatory = () => { if (prototypeInstructionCurrent()) location.search = "?station=validation"; else $("worldNarration").textContent = "Validation Observatory needs the Prototype Workshop instructional sequence. Optional bench evidence is not required."; };
+  const openControlTower = () => { location.search = "?station=control"; };
+  const openPrototypeWorkshop = () => { location.search = "?station=prototype"; };
+  const openValidationObservatory = () => { location.search = "?station=validation"; };
   $("balancedStation").addEventListener("click", openBalancedTunnel);
   $("balancedStation").addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
